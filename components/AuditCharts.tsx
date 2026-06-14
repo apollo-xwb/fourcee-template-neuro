@@ -1,5 +1,4 @@
 import React from 'react';
-import { GBP_PLACEHOLDER_TOKENS } from './audit-placeholders';
 
 /** Bar chart metallic defs - unique ids (prefix cv-) */
 function BarChartDefs() {
@@ -255,7 +254,7 @@ export function BeforeAfterCards({ comparison, currencySymbol, isDarkMode = true
   );
 }
 
-export function GbpSnapshotMockup({ reviews: _reviews, isDarkMode = true }: { reviews: { rating: number; count: number; starsDisplay: string; quote1: string; quote2: string }; isDarkMode?: boolean }) {
+export function GbpSnapshotMockup({ reviews, isDarkMode = true }: { reviews: { rating: number; count: number; starsDisplay: string; quote1: string; quote2: string }; isDarkMode?: boolean }) {
   return (
     <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 to-black' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
       <div className="flex items-center gap-2">
@@ -272,10 +271,10 @@ export function GbpSnapshotMockup({ reviews: _reviews, isDarkMode = true }: { re
           <span
             className={`text-lg ${isDarkMode ? 'text-amber-300 drop-shadow-[0_0_8px_rgba(253,224,71,0.55)]' : 'text-amber-800'}`}
           >
-            {GBP_PLACEHOLDER_TOKENS.stars}
+            {reviews.starsDisplay}
           </span>
-          <span className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{GBP_PLACEHOLDER_TOKENS.ratingOutOf5}</span>
-          <span className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>({GBP_PLACEHOLDER_TOKENS.reviewsCount} reviews)</span>
+          <span className={`text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{reviews.rating.toFixed(1)} out of 5</span>
+          <span className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>({reviews.count.toLocaleString()} reviews)</span>
         </div>
         <p className={`mt-3 text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-600' : 'text-navy-500'}`}>Representative themes from public reviews</p>
       </div>
