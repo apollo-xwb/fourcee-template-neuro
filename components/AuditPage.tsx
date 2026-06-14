@@ -18,7 +18,6 @@ import {
   SectionTrustFooter,
   TrafficPieChart,
 } from './AuditCharts';
-import { GBP_PLACEHOLDER_TOKENS } from './audit-placeholders';
 
 interface AuditPageProps {
   isDarkMode: boolean;
@@ -290,7 +289,7 @@ export const AuditPage: React.FC<AuditPageProps> = ({ isDarkMode, onGetLive, onB
                 <HeaderMetaItem
                   tone="gold"
                   surface={headerSurface}
-                  label={`${GBP_PLACEHOLDER_TOKENS.stars} ${GBP_PLACEHOLDER_TOKENS.ratingOutOf5} • ${GBP_PLACEHOLDER_TOKENS.reviewsCount} Google Reviews`}
+                  label={`${data.reviews.starsDisplay} ${data.reviews.rating.toFixed(1)} • ${data.reviews.count.toLocaleString()} Google Reviews`}
                 />
                 <HeaderMetaItem
                   tone="silver"
