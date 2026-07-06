@@ -1,4 +1,5 @@
 export interface AuditData {
+  lead_id?: string;
   auditMeta: {
     generatedDate: string;
     reportId: string;

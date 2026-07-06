@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { AppView, BlogPost } from './types';
 import { FloatingNav } from './components/FloatingNav';
 
@@ -224,7 +224,7 @@ const App: React.FC = () => {
     setShowPortalGuide(true);
   };
 
-  const navigate = (view: AppView, post?: BlogPost, packageId?: string) => {
+  const navigate = useCallback((view: AppView, post?: BlogPost, packageId?: string) => {
     setCurrentView(view);
     if (post) setSelectedPost(post);
     if (view === AppView.CHECKOUT) {
@@ -233,7 +233,7 @@ const App: React.FC = () => {
       if (el) el.scrollTo({ top: 0, behavior: 'instant' });
       else window.scrollTo({ top: 0, behavior: 'instant' });
     } else setPreSelectedPackageId(null);
-  };
+  }, []);
 
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
   const sideMenuRecoveredMonthly = Math.round(sideMenuCallsPerMonth * sideMenuAvgDeal * 0.22);
@@ -310,11 +310,8 @@ const App: React.FC = () => {
     window.setTimeout(() => triggerEl?.click(), 180);
   };
 
-  if (!isReady) {
-    return <SplashScreen onComplete={() => setIsReady(true)} />;
-  }
-
-  const LandingPage = ({ scrollContainerRef }: { scrollContainerRef: React.RefObject<HTMLDivElement | null> }) => {
+  const LandingPage = useMemo(() => {
+    return function LandingPageImpl({ scrollContainerRef }: { scrollContainerRef: React.RefObject<HTMLDivElement | null> }) {
     const [showDemoCallModal, setShowDemoCallModal] = useState(false);
     const problemRef = useRef<HTMLElement>(null);
     const demoRef = useRef<HTMLElement>(null);
@@ -465,7 +462,7 @@ const App: React.FC = () => {
           {/* Test Fourcee - mobile last, desktop bottom-right; smaller on very small phones */}
           <div className="order-4 md:order-3 md:row-start-2 md:self-end flex justify-center md:justify-center">
             <div className="w-full max-w-[130px] min-[340px]:max-w-[160px] min-[375px]:max-w-[200px] sm:max-w-[280px] md:max-w-sm">
-              <MiniPhone isDarkMode={isDarkMode} businessName={businessName} />
+              <MiniPhone isDarkMode={isDarkMode} businessName={businessName} leadId={auditData?.lead_id} />
             </div>
           </div>
         </div>
@@ -553,6 +550,7 @@ const App: React.FC = () => {
               <MiniPhone
                 isDarkMode={isDarkMode}
                 businessName={businessName}
+                leadId={auditData?.lead_id}
                 onCallCompleted={handleDemoCallCompleted}
               />
             </div>
@@ -1044,7 +1042,7 @@ const App: React.FC = () => {
 
       {showTester && <PhoneTester onClose={() => setShowTester(false)} />}
     </div>
-  ); };
+  ); }; }, [isDarkMode, businessName, auditData, navigate]);
 
   const BlogPage = () => (
     <div className="pt-24 pb-12 px-6 max-w-6xl mx-auto animate-in fade-in duration-700 bg-transparent">
@@ -1175,6 +1173,10 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+
+  if (!isReady) {
+    return <SplashScreen onComplete={() => setIsReady(true)} />;
+  }
 
   return (
     <div

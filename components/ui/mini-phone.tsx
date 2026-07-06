@@ -12,15 +12,17 @@ const COUNTRIES = [
   { code: '+91', name: 'IN', flag: '🇮🇳' },
   { code: '+33', name: 'FR', flag: '🇫🇷' },
   { code: '+49', name: 'DE', flag: '🇩🇪' },
+  { code: '+251', name: 'ET', flag: '🇪🇹' },
   { code: '+971', name: 'AE', flag: '🇦🇪' },
   { code: '+81', name: 'JP', flag: '🇯🇵' },
-  { code: '+39', name: 'IT', flag: '🇮🇹' },
+  // { code: '+39', name: 'IT', flag: '🇮🇹' },
 ];
 
 export interface MiniPhoneProps {
   className?: string;
   isDarkMode?: boolean;
   businessName?: string;
+  leadId?: string;
   onCallCompleted?: () => void;
 }
 
@@ -28,6 +30,7 @@ export function MiniPhone({
   className,
   isDarkMode = true,
   businessName = 'PLACEHOLDER Business',
+  leadId,
   onCallCompleted,
 }: MiniPhoneProps) {
   const [selectedCountry, setSelectedCountry] = React.useState(COUNTRIES[0]);
@@ -35,10 +38,29 @@ export function MiniPhone({
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [status, setStatus] = React.useState<'idle' | 'calling' | 'success'>('idle');
 
-  const handleCall = () => {
+  const handleCall = async () => {
     if (!phone.trim()) return;
     setStatus('calling');
-    setTimeout(() => setStatus('success'), 2000);
+    
+    try {
+      const response = await fetch('https://app.fourcee.online/webhook/voice-demo-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone_number: `${selectedCountry.code}${phone.replace(/\\D/g, '')}`,
+          lead_id: leadId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to start call');
+      setStatus('success');
+    } catch (error) {
+      console.error(error);
+      setStatus('idle');
+      alert('Failed to initiate call. Please try again.');
+    }
   };
 
   React.useEffect(() => {
@@ -83,7 +105,7 @@ export function MiniPhone({
             </div>
           </div>
 
-          <div className="flex gap-2 mb-4 min-w-0 overflow-hidden">
+          <div className="flex gap-2 mb-4 min-w-0">
             <div className="relative shrink-0">
               <button
                 type="button"
