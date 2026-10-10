@@ -168,18 +168,30 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const businessName = auditData?.business.name ?? 'PLACEHOLDER Business';
 
-  // Load audit data from content.json
+  // Load audit data from contents.json (or fallback to content.json)
   useEffect(() => {
-    fetch('/content.json')
-      .then(res => res.json())
-      .then((data: AuditData) => {
-        setAuditData(data);
-        setAuditDataLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to load audit data:', err);
-        setAuditDataLoading(false);
-      });
+    let mounted = true;
+    const loadAudit = async () => {
+      try {
+        let res = await fetch('/contents.json');
+        if (!res.ok) res = await fetch('/content.json');
+        if (!res.ok) throw new Error('Failed to load audit data');
+        const data: AuditData = await res.json();
+        if (mounted) {
+          setAuditData(data);
+          setAuditDataLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          console.error('Failed to load audit data:', err);
+          setAuditDataLoading(false);
+        }
+      }
+    };
+    loadAudit();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {

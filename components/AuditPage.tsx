@@ -410,7 +410,7 @@ export const AuditPage: React.FC<AuditPageProps> = ({ isDarkMode, onGetLive, onB
                 >
                   Try Fourcee on your phone
                 </p>
-                <MiniPhone isDarkMode={isDarkMode} className="w-full" businessName={data.business.name} />
+                <MiniPhone isDarkMode={isDarkMode} className="w-full" businessName={data.business.name} leadId={data.lead_id} />
                 <p className={`mt-3 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>
                   Uses your public profile &amp; site context. No charge. ~60–90s.
                 </p>

@@ -37,11 +37,58 @@ export function MiniPhone({
   const [phone, setPhone] = React.useState('');
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [status, setStatus] = React.useState<'idle' | 'calling' | 'success'>('idle');
+  const [internalLeadId, setInternalLeadId] = React.useState<string | undefined>(leadId);
+
+  React.useEffect(() => {
+    if (leadId) {
+      setInternalLeadId(leadId);
+      return;
+    }
+    const fetchLeadId = async () => {
+      try {
+        let res = await fetch('/contents.json');
+        if (!res.ok) res = await fetch('/content.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.lead_id) {
+            setInternalLeadId(data.lead_id);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchLeadId();
+  }, [leadId]);
 
   const handleCall = async () => {
     if (!phone.trim()) return;
     setStatus('calling');
     
+    let activeLeadId = leadId || internalLeadId;
+    if (!activeLeadId) {
+      try {
+        let res = await fetch('/contents.json');
+        if (!res.ok) res = await fetch('/content.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.lead_id) {
+            activeLeadId = data.lead_id;
+            setInternalLeadId(data.lead_id);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let rawPhone = phone.replace(/\D/g, '');
+    const dialDigits = selectedCountry.code.replace(/\D/g, '');
+    if (dialDigits && rawPhone.startsWith(dialDigits) && rawPhone.length > dialDigits.length + 6) {
+      rawPhone = rawPhone.slice(dialDigits.length);
+    }
+    const formattedPhone = `${selectedCountry.code}${rawPhone}`;
+
     try {
       const response = await fetch('https://app.fourcee.online/webhook/voice-demo-request', {
         method: 'POST',
@@ -49,8 +96,8 @@ export function MiniPhone({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone_number: `${selectedCountry.code}${phone.replace(/\\D/g, '')}`,
-          lead_id: leadId,
+          phone_number: formattedPhone,
+          lead_id: activeLeadId ?? null,
         }),
       });
 

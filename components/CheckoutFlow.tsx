@@ -28,19 +28,23 @@ export const CheckoutFlow: React.FC<CheckoutFlowProps> = ({ isDarkMode = false, 
 
   useEffect(() => {
     let mounted = true;
-    fetch('/content.json')
-      .then((res) => res.json())
-      .then((data: { business?: { name?: string } }) => {
+    const loadCompany = async () => {
+      try {
+        let res = await fetch('/contents.json');
+        if (!res.ok) res = await fetch('/content.json');
+        if (!res.ok) return;
+        const data: { business?: { name?: string } } = await res.json();
         if (!mounted) return;
         const incomingName = data?.business?.name?.trim();
         if (!incomingName) return;
         setCompanyName((current) =>
           current && current !== 'PLACEHOLDER Business' ? current : incomingName
         );
-      })
-      .catch(() => {
+      } catch {
         // Keep placeholder if audit data is unavailable.
-      });
+      }
+    };
+    loadCompany();
     return () => {
       mounted = false;
     };
