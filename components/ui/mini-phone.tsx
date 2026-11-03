@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadAuditContent } from '../../lib/load-content';
 
 const COUNTRIES = [
   { code: '+1', name: 'US/CA', flag: '🇺🇸' },
@@ -46,10 +47,8 @@ export function MiniPhone({
     }
     const fetchLeadId = async () => {
       try {
-        let res = await fetch('/contents.json');
-        if (!res.ok) res = await fetch('/content.json');
-        if (res.ok) {
-          const data = await res.json();
+        const data = await loadAuditContent<{ lead_id?: string }>();
+        if (data) {
           if (data?.lead_id) {
             setInternalLeadId(data.lead_id);
           }
@@ -68,10 +67,8 @@ export function MiniPhone({
     let activeLeadId = leadId || internalLeadId;
     if (!activeLeadId) {
       try {
-        let res = await fetch('/contents.json');
-        if (!res.ok) res = await fetch('/content.json');
-        if (res.ok) {
-          const data = await res.json();
+        const data = await loadAuditContent<{ lead_id?: string }>();
+        if (data) {
           if (data?.lead_id) {
             activeLeadId = data.lead_id;
             setInternalLeadId(data.lead_id);

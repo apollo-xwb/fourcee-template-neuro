@@ -13,6 +13,7 @@ import { EtherealShadow } from './components/ui/etheral-shadow';
 import { DottedSurface } from './components/ui/dotted-surface';
 import DisplayCards from './components/ui/display-cards';
 import { PendantFBX } from './components/PendantFBX';
+import { loadAuditContent } from './lib/load-content';
 import { IncomingCallPhone } from './components/ui/incoming-call-phone';
 import { MiniPhone } from './components/ui/mini-phone';
 import {
@@ -154,7 +155,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.LEAD_MAGNET);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showTester, setShowTester] = useState(false);
   const [expandedIntegration, setExpandedIntegration] = useState<number | null>(null);
   const [preSelectedPackageId, setPreSelectedPackageId] = useState<string | null>(null);
@@ -173,10 +174,8 @@ const App: React.FC = () => {
     let mounted = true;
     const loadAudit = async () => {
       try {
-        let res = await fetch('/contents.json');
-        if (!res.ok) res = await fetch('/content.json');
-        if (!res.ok) throw new Error('Failed to load audit data');
-        const data: AuditData = await res.json();
+        const data = await loadAuditContent<AuditData>();
+        if (!data) throw new Error('Failed to load audit data');
         if (mounted) {
           setAuditData(data);
           setAuditDataLoading(false);
@@ -1403,7 +1402,7 @@ const App: React.FC = () => {
               </span>
               </button>
               {showPortalGuide && (
-                <div className="absolute bottom-14 right-0 w-[min(92vw,360px)] rounded-2xl border border-[#d9c39a]/70 bg-white/95 dark:bg-navy-950/95 dark:border-white/20 shadow-2xl p-4">
+                <div className="absolute bottom-14 -right-11 sm:right-0 w-[min(92vw,360px)] rounded-2xl border border-[#d9c39a]/70 bg-white/95 dark:bg-navy-950/95 dark:border-white/20 shadow-2xl p-4">
                 <p className="text-[10px] uppercase tracking-[0.23em] text-[#7a6648] dark:text-amber-200/80">Portal Walkthrough</p>
                 <p className="mt-2 text-sm text-navy-800 dark:text-slate-200">
                   This profile icon opens your Concierge Intelligence Portal: live calls, transcript quality, booked consults, and revenue impact across screens.

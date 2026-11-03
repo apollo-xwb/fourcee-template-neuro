@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { PACKAGES, UPSELLS } from '../constants.tsx';
 import { CheckoutState } from '../types';
 import fcShad from '../public/assets/fcshad.png';
+import { loadAuditContent } from '../lib/load-content';
 interface CheckoutFlowProps {
   isDarkMode?: boolean;
   initialPackageId?: string | null;
@@ -30,10 +31,8 @@ export const CheckoutFlow: React.FC<CheckoutFlowProps> = ({ isDarkMode = false, 
     let mounted = true;
     const loadCompany = async () => {
       try {
-        let res = await fetch('/contents.json');
-        if (!res.ok) res = await fetch('/content.json');
-        if (!res.ok) return;
-        const data: { business?: { name?: string } } = await res.json();
+        const data = await loadAuditContent<{ business?: { name?: string } }>();
+        if (!data) return;
         if (!mounted) return;
         const incomingName = data?.business?.name?.trim();
         if (!incomingName) return;

@@ -1,9 +1,5 @@
-import React, { useState } from 'react';
-import logoUrl from '../assets/logo.png';
-import fcWhite from '../public/assets/fcwhite.png';
-import fcBlack from '../public/assets/fcblack.png';
-import placeholderGif from '../public/assets/placeholder.gif';
-import nivodaGif from '../public/assets/nivoda.gif';
+import React, { Suspense, lazy, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PendantFBX } from './PendantFBX';
 import { MiniPhone } from './ui/mini-phone';
 import { IncomingCallPhone } from './ui/incoming-call-phone';
@@ -12,12 +8,20 @@ import type { AuditData } from '../types/audit';
 import {
   BeforeAfterCards,
   CallVolumeBarChart,
-  GbpSnapshotMockup,
   MissedCallDonutChart,
   RevenueLeakLineChart,
   SectionTrustFooter,
   TrafficPieChart,
 } from './AuditCharts';
+
+/**
+ * Audit page, restyled to match fourcee.online (ivory + dark slatted texture, Michroma display type, ink/brass
+ * hairline buttons, no cards/glows). Every binding to content.json is kept; every section is null-guarded and
+ * hidden when the scraped field it shows is missing, so the page never fills gaps with invented copy or numbers.
+ * Previous version: _superseded/AuditPage.tsx.
+ */
+
+const RingStudio = lazy(() => import('./ring-studio/RingStudio'));
 
 interface AuditPageProps {
   isDarkMode: boolean;
@@ -26,710 +30,354 @@ interface AuditPageProps {
   data: AuditData;
 }
 
-/** `surface`: navy = light page header (blue bar); white = dark page header (white bar). */
-const HeaderMetaItem: React.FC<{ label: string; tone?: 'gold' | 'silver'; surface: 'navy' | 'white' }> = ({
-  label,
-  tone = 'silver',
-  surface,
-}) => {
-  const onNavy = surface === 'navy';
-  if (tone === 'gold') {
-    const cls = onNavy
-      ? 'rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_4px_20px_rgba(0,0,0,0.15)]'
-      : 'rounded-full border border-amber-200/80 bg-gradient-to-r from-amber-50 to-white px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-950 shadow-[0_8px_20px_rgba(15,23,42,0.06)]';
-    return <span className={cls}>{label}</span>;
-  }
-  const cls = onNavy
-    ? 'rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100'
-    : 'rounded-full border border-navy-200 bg-white px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-800 shadow-[0_8px_20px_rgba(15,23,42,0.06)]';
-  return <span className={cls}>{label}</span>;
-};
+type DeepPartial<T> = T extends Array<infer U> ? Array<DeepPartial<U>> : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> | null } : T;
 
-const HeroMetricPill: React.FC<{ label: string; value: string; isDarkMode: boolean }> = ({ label, value, isDarkMode }) => (
-  <div className={`rounded-2xl border px-4 py-3 backdrop-blur-md ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'border-navy-200 bg-white/80'}`}>
-    <p className={`text-[10px] uppercase tracking-[0.22em] ${isDarkMode ? 'text-slate-400' : 'text-navy-500'}`}>{label}</p>
-    <p className={`mt-2 text-xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{value}</p>
+const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const str = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
+const arr = <T,>(v: T[] | null | undefined): v is T[] => Array.isArray(v) && v.length > 0;
+
+const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+const Kicker: React.FC<{ children: React.ReactNode; light?: boolean }> = ({ children, light }) => (
+  <p className={`fx-kicker ${light ? 'text-[#c8b58f]' : 'text-[#6b5f4c]'}`}>{children}</p>
+);
+
+const Stat: React.FC<{ label: string; value: string; light?: boolean }> = ({ label, value, light }) => (
+  <div className={`border-t pt-4 ${light ? 'border-[rgba(200,181,143,0.28)]' : 'border-[rgba(12,11,9,0.16)]'}`}>
+    <p className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-[#a8957a]' : 'text-[#6b5f4c]'}`}>{label}</p>
+    <p className={`mt-2 font-[Michroma] text-[1.15rem] leading-tight tabular-nums sm:text-2xl ${light ? 'text-[#f4efe4]' : 'text-[#0c0b09]'}`}>{value}</p>
   </div>
 );
 
-const KpiCard: React.FC<{ title: string; value: string; isDarkMode: boolean }> = ({ title, value, isDarkMode }) => (
-  <div className={`group rounded-3xl border p-6 transition hover:-translate-y-0.5 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950/80 to-black shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-amber-500/20' : 'border-navy-200 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,0.06)] hover:border-navy-300'}`}>
-    <p className={`text-[10px] uppercase tracking-[0.24em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>{title}</p>
-    <p className={`mt-3 text-3xl font-semibold transition ${isDarkMode ? 'text-slate-100 group-hover:text-amber-100' : 'text-navy-900 group-hover:text-emerald-800'}`}>{value}</p>
-  </div>
+const Arrow = () => (
+  <svg aria-hidden viewBox="0 0 16 16" className="hc-arrow"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="square" /></svg>
 );
 
-const ProgressMetric: React.FC<{ label: string; value: string; widthClass: string; isDarkMode: boolean }> = ({
-  label,
-  value,
-  widthClass,
-  isDarkMode,
-}) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <span className={`font-medium ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>{label}</span>
-      <span className={`shrink-0 text-right text-base font-semibold tabular-nums ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{value}</span>
-    </div>
-    <div className={`h-3.5 rounded-full border p-0.5 ${isDarkMode ? 'border-white/10 bg-gradient-to-b from-zinc-900 to-black shadow-[inset_0_2px_6px_rgba(0,0,0,0.65)]' : 'border-navy-200 bg-slate-100'}`}>
-      <div
-        className={`h-full min-h-[10px] rounded-full ${
-          isDarkMode
-            ? 'bg-gradient-to-r from-slate-400 via-amber-300 to-yellow-500 shadow-[0_0_16px_rgba(212,175,55,0.45),inset_0_1px_0_rgba(255,255,255,0.35)]'
-            : 'bg-gradient-to-r from-slate-500 via-emerald-600 to-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]'
-        } ${widthClass}`}
-      />
-    </div>
-  </div>
-);
-
-const scrollToId = (id: string) => {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
-
-const gridBgStyle: React.CSSProperties = {
-  backgroundImage:
-    'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
-  backgroundSize: '28px 28px',
-};
-
-const gridBgStyleLight: React.CSSProperties = {
-  backgroundImage:
-    'linear-gradient(rgba(15,23,42,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.06) 1px, transparent 1px)',
-  backgroundSize: '28px 28px',
-};
-
-export const AuditPage: React.FC<AuditPageProps> = ({ isDarkMode, onGetLive, onBookCall, data }) => {
+export const AuditPage: React.FC<AuditPageProps> = ({ onGetLive, onBookCall, data }) => {
+  const d = data as unknown as DeepPartial<AuditData>;
   const [showIntroSplash, setShowIntroSplash] = useState(true);
-  const [showHeaderStats, setShowHeaderStats] = useState(false);
-  const headerSurface = isDarkMode ? 'white' : 'navy';
-  const triggerBooking = () => {
-    scrollToId('audit-booking-cta');
-    onBookCall();
-  };
-  const shellClass = isDarkMode
-    ? 'border-white/10 bg-gradient-to-br from-navy-900/90 via-navy-950 to-navy-900/90 text-white'
-    : 'border-navy-200/80 bg-gradient-to-br from-white via-slate-50 to-slate-100 text-navy-900 shadow-[0_18px_55px_rgba(15,23,42,0.08)]';
-  const panelClass = isDarkMode
-    ? 'border-white/10 bg-white/[0.04] text-white'
-    : 'border-navy-200/80 bg-white/85 text-navy-900 shadow-[0_10px_35px_rgba(15,23,42,0.06)]';
+  const [logoOk, setLogoOk] = useState(true);
 
-  // Format currency helper
-  const formatCurrency = (amount: number) => {
-    return `${data.auditMeta.currencySymbol}${amount.toLocaleString(data.auditMeta.locale)}`;
-  };
+  const meta = d.auditMeta ?? {};
+  const biz = d.business ?? {};
+  const name = str(biz.name) ? biz.name : '';
+  const location = str(biz.location) ? biz.location : '';
+  const sym = str(meta.currencySymbol) ? meta.currencySymbol : '';
+  const locale = str(meta.locale) ? meta.locale : undefined;
+  const money = (n: number) => `${sym}${n.toLocaleString(locale)}`;
+  const range = (a: unknown, b: unknown) => (num(a) && num(b) ? `${a}–${b}` : num(a) ? `${a}` : num(b) ? `${b}` : '');
+  const sourceLine = str(d.compliance?.dataSourceLine) ? d.compliance!.dataSourceLine! : '';
+  const Trust = ({ light }: { light?: boolean }) => (sourceLine ? <SectionTrustFooter dataSourceLine={sourceLine} isDarkMode={!!light} /> : null);
 
-  // Format range helper
-  const formatRange = (min: number, max: number) => {
-    return `${min}-${max}`;
-  };
+  const cm = d.callModel ?? {};
+  const rm = d.revenueModel ?? {};
+  const callStats = [
+    { label: 'Estimated inbound calls / week', value: range(cm.inboundCallsPerWeekMin, cm.inboundCallsPerWeekMax) },
+    { label: 'Typical answer rate', value: range(cm.answerRateMin, cm.answerRateMax) && `${range(cm.answerRateMin, cm.answerRateMax)}%` },
+    { label: 'Likely missed calls / week', value: range(cm.missedCallsPerWeekMin, cm.missedCallsPerWeekMax) },
+  ].filter((s) => s.value);
+  const hasLoss = num(rm.monthlyLossMin) && num(rm.monthlyLossMax);
+  const hasVolumeChart = [cm.inboundCallsPerWeekMin, cm.inboundCallsPerWeekMax, cm.answeredCallsPerWeekMin, cm.answeredCallsPerWeekMax, cm.missedCallsPerWeekMin, cm.missedCallsPerWeekMax].every(num);
+  const split = (cm.missedCallTypeSplit ?? []).filter((s) => s && str(s.label) && num(s.percent)) as Array<{ label: string; percent: number }>;
+  const series = (rm.lineSeries ?? []).filter(num) as number[];
+  const hasLine = series.length > 1 && num(rm.sixMonthCumulativeLeak);
+  const rows = (d.breakdown?.rows ?? []).filter((r) => r && str(r.callType)) as AuditData['breakdown']['rows'];
+  const cards = (d.breakdown?.opportunityCards ?? []).filter((c) => c && str(c.title));
+  const traffic = (d.traffic?.sources ?? []).filter((s) => s && str(s.label) && num(s.percent)) as AuditData['traffic']['sources'];
+  const cmp = d.comparison ?? {};
+  const hasCmp = [cmp.currentAnsweredRate, cmp.currentMonthlyLoss, cmp.projectedAnsweredRate, cmp.projectedMonthlyLoss].every(num);
+  const p90 = d.projection90d ?? {};
+  const projections = [
+    { label: 'Answer rate', value: p90.answerRateProjected },
+    { label: 'Monthly revenue recovered', value: p90.monthlyRecoveredProjected },
+    { label: 'Typical payback period', value: p90.paybackPeriodProjected },
+  ].filter((p) => str(p.value)) as Array<{ label: string; value: string }>;
+  const rev = d.reviews ?? {};
+  const hasReviews = num(rev.rating) && num(rev.count) && rev.count > 0;
+  const quotes = [rev.quote1, rev.quote2].filter(str) as string[];
+  const themes = (rev.themes ?? []).filter(str) as string[];
+  const plan = d.recoveryPlan ?? {};
+  const caps = (plan.capabilities ?? []).filter(str) as string[];
+  const media = str(plan.supportingMediaUrl) && !/placeholder\.gif$/i.test(plan.supportingMediaUrl) ? plan.supportingMediaUrl : '';
+  const hasPlan = str(plan.body) || caps.length > 0 || !!media;
+  const disclaimer = str(d.compliance?.disclaimerShort) ? d.compliance!.disclaimerShort! : '';
+  const live = d.liveDemo ?? {};
 
   return (
-    <div
-      className={`relative min-h-screen pb-8 ${
-        isDarkMode
-          ? 'text-white [background:radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(212,175,55,0.07),transparent_55%),linear-gradient(180deg,#051b2d_0%,#091f32_45%,#102a43_100%)]'
-          : 'text-navy-900 [background:radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(188,146,72,0.16),transparent_58%),linear-gradient(180deg,#faf5ea_0%,#f6efdf_50%,#f2e8d2_100%)]'
-      } font-sans`}
-    >
-      <div
-        className={`pointer-events-none absolute inset-0 ${isDarkMode ? 'opacity-[0.22]' : 'opacity-[0.34]'}`}
-        style={isDarkMode ? gridBgStyle : gridBgStyleLight}
-      />
-      {showIntroSplash && (
-        <div
-          className={`fixed inset-0 z-[120] flex items-center justify-center p-4 backdrop-blur-md sm:p-6 ${
-            isDarkMode ? 'bg-navy-950/95' : 'bg-slate-100/92'
-          }`}
-          style={{
-            backgroundImage: isDarkMode
-              ? "url('/assets/dark_hero.png')"
-              : "url('/assets/light_hero.png')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-            backgroundRepeat: 'no-repeat',
-          }}
-        >
-          {isDarkMode && (
-            <div
-              className="pointer-events-none absolute inset-0 opacity-35 mix-blend-soft-light"
-              style={{
-                backgroundImage:
-                  'radial-gradient(rgba(255,255,255,0.18) 0.6px, transparent 0.6px), radial-gradient(rgba(255,255,255,0.1) 0.6px, transparent 0.6px)',
-                backgroundSize: '3px 3px, 5px 5px',
-                backgroundPosition: '0 0, 1px 2px',
-              }}
-            />
+    <div className="relative min-h-screen bg-[#faf5ea] font-sans text-[#0c0b09]" data-testid="audit-page">
+      {showIntroSplash && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-5 fourcee-ribbed-wash" role="dialog" aria-modal="true" aria-label="Audit cover">
+          <div className="w-full max-w-xl text-center">
+            <div className="mx-auto h-[170px] w-[170px] sm:h-[210px] sm:w-[210px]">
+              <PendantFBX className="h-full w-full" isDarkMode />
+            </div>
+            {str(meta.confidentialityLabel) && <p className="fx-kicker mt-2 text-[#c8b58f]">{meta.confidentialityLabel}</p>}
+            <h2 className="fx-display mt-4 text-[1.35rem] leading-[1.1] text-[#f4efe4] sm:text-3xl">
+              {str(meta.preparedForLabel) && <span className="block text-[11px] tracking-[0.24em] text-[#ddd4c6] sm:text-xs">{meta.preparedForLabel}</span>}
+              <span className="mt-2 block">{name}</span>
+            </h2>
+            <button type="button" onClick={() => setShowIntroSplash(false)} className="hc-btn hc-primary mt-8" data-testid="audit-proceed">
+              <span>Proceed to report</span><Arrow />
+            </button>
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Header bar: client identity only from content.json */}
+      <header className="sticky top-0 z-40 border-b border-[rgba(12,11,9,0.12)] bg-[rgba(250,245,234,0.86)] backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-5 py-3 sm:px-8">
+          {str(biz.logoUrl) && logoOk && (
+            <img src={biz.logoUrl} alt="" className="h-8 w-8 rounded-full object-contain" onError={() => setLogoOk(false)} />
           )}
-          <div className="pointer-events-none absolute inset-0 opacity-40" style={isDarkMode ? gridBgStyle : gridBgStyleLight} />
-          <div className={`relative w-full max-w-2xl overflow-hidden rounded-[2rem] border p-6 text-center sm:p-8 md:p-10 ${shellClass}`}>
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.2] sm:opacity-25"
-              style={isDarkMode ? gridBgStyle : gridBgStyleLight}
-            />
-            <div className="relative z-10 flex flex-col items-center">
-              <img
-                src={isDarkMode ? fcWhite : fcBlack}
-                alt="Fourcee"
-                className="mx-auto mb-5 h-12 w-auto object-contain drop-shadow-md sm:mb-6 sm:h-14 md:h-16"
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold uppercase tracking-[0.16em]">{name}</p>
+            {location && <p className="truncate text-[10px] uppercase tracking-[0.18em] text-[#6b5f4c]">{location}</p>}
+          </div>
+          {hasReviews && (
+            <p className="ml-auto shrink-0 text-[11px] tabular-nums text-[#3a342b]" data-testid="header-rating">
+              {rev.rating!.toFixed(1)} ★ <span className="hidden sm:inline">· {rev.count!.toLocaleString(locale)} reviews</span>
+            </p>
+          )}
+        </div>
+      </header>
+
+      {/* Hero: same treatment as fourcee.online (untinted slatted photo, directional beige fade/wash, glass headline plate) */}
+      <section id="hero" className="fourcee-hero-beige relative overflow-hidden">
+        <div className="fourcee-hero-overlay pointer-events-none absolute inset-0" data-testid="hero-overlay" aria-hidden />
+        <div className="fx-grid z-[1]" aria-hidden />
+        <div className="fourcee-hero-fade pointer-events-none absolute inset-0 z-[2] lg:hidden" aria-hidden />
+        <div className="fourcee-hero-wash pointer-events-none absolute inset-0 z-[2] hidden lg:block" aria-hidden />
+        <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-6 px-5 pt-10 pb-16 sm:px-8 md:px-12 lg:min-h-[calc(100svh-56px)] lg:grid-cols-2 lg:items-center lg:gap-10 lg:py-16">
+          <div className="relative hidden h-full min-h-[420px] lg:block" aria-hidden>
+            <PendantFBX className="absolute inset-0 h-full w-full" isDarkMode />
+          </div>
+          <div className="w-full max-w-xl text-left lg:justify-self-end">
+            <div className="fx-chip mb-3 sm:mb-5"><span className="fx-dot" />{str(meta.confidentialityLabel) ? meta.confidentialityLabel : 'Phone performance audit'}</div>
+            <div className="hero-head-glass -mx-1 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 lg:mx-0 lg:rounded-none lg:p-0">
+              <h1 className="fx-display text-[22px] leading-[1.05] text-[#0c0b09] sm:text-[30px] md:text-4xl lg:text-5xl">
+                <span className="block">Phone performance</span>
+                <span className="block">audit report</span>
+              </h1>
+              <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[#3a342b] sm:mt-4 sm:text-[11px] sm:tracking-[0.22em]" data-testid="hero-prepared-for">
+                {str(meta.preparedForLabel) ? `${meta.preparedForLabel} ` : ''}{name}{location ? ` · ${location}` : ''}
+              </p>
+              {str(meta.generatedDate) && <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#6b5f4c]">{meta.generatedDate}</p>}
+            </div>
+            <div className="liquid-glass mt-4 max-w-[440px] rounded-2xl px-5 py-3.5 sm:mt-6 sm:py-4">
+              <p className="fx-kicker">What Fourcee does</p>
+              <p className="mt-1.5 text-sm font-medium tracking-wide text-[#0c0b09] sm:text-base">Picks up when your team can&apos;t</p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-[#3a342b] sm:text-[13px]">
+                It answers stock, repair and pricing questions, books consultations into your calendar, and puts serious buyers straight through to you.
+              </p>
+            </div>
+            <div className="hero-ctas mt-5 flex flex-wrap items-center gap-x-3 gap-y-3 sm:mt-7" data-testid="hero-ctas">
+              <button type="button" onClick={() => scrollToId('ring-studio')} className="hc-btn hc-primary" data-testid="hero-cta-ring">
+                <span>Try the Ring Builder</span><Arrow />
+              </button>
+              <button type="button" onClick={() => scrollToId('audit-full-report')} className="hc-btn hc-secondary" data-testid="hero-cta-audit">
+                See the audit
+              </button>
+              <button type="button" onClick={() => scrollToId('audit-roi')} className="hc-link" data-testid="hero-cta-roi">
+                Calculate ROI
+              </button>
+            </div>
+            <div id="audit-live-test" className="mt-5 max-w-sm scroll-mt-24 sm:mt-7">
+              <MiniPhone
+                isDarkMode={false}
+                className="w-full"
+                businessName={data.business?.name}
+                leadId={data.lead_id}
               />
-              <div className="mx-auto mb-8 flex w-full max-w-[min(46vw,176px)] shrink-0 items-center justify-center sm:mb-10 sm:max-w-[200px] md:max-w-[220px] lg:max-w-[240px]">
-                <div className="aspect-square w-full max-h-[min(42vw,220px)] sm:max-h-[min(36vw,240px)] md:max-h-[260px]">
-                  <PendantFBX className="h-full w-full" isDarkMode={isDarkMode} />
-                </div>
-              </div>
-              <p className={`text-[10px] font-semibold uppercase tracking-[0.35em] ${isDarkMode ? 'text-amber-200/80' : 'text-navy-700'}`}>
-                {data.auditMeta.confidentialityLabel}
-              </p>
-              <h2 className={`mt-3 text-2xl font-semibold leading-snug md:text-4xl ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-                {data.auditMeta.preparedForLabel} {data.business.name}
-              </h2>
-              <p className={`mt-3 text-sm leading-relaxed md:text-base ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>
-                This intelligence report is private, tailored to your showroom performance, and intended only for the
-                {` `}
-                <span className={`font-semibold ${isDarkMode ? 'text-amber-100' : 'text-navy-900'}`}>{data.business.name}</span> leadership team.
-              </p>
-              <p className={`mt-2 text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>
-                Before proceeding, you can test Fourcee instantly and have the agent call you using your actual business context.
-              </p>
-              <div
-                className={`mt-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                  isDarkMode
-                    ? 'border-emerald-400/35 bg-emerald-950/30 text-emerald-200'
-                    : 'border-emerald-600/35 bg-emerald-50 text-emerald-900'
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 animate-pulse rounded-full ${isDarkMode ? 'bg-emerald-300' : 'bg-emerald-600'}`}
-                />
-                Secure access granted
-              </div>
-              <div className="mt-7">
-                <button
-                  type="button"
-                  onClick={() => setShowIntroSplash(false)}
-                  className={`rounded-full border px-7 py-3 text-[11px] font-bold uppercase tracking-[0.24em] shadow-lg transition ${
-                    isDarkMode
-                      ? 'border-amber-300/40 bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-500 text-black hover:brightness-110'
-                      : 'border-[#9f8251] bg-gradient-to-r from-[#f7e4bb] via-[#f2d8a1] to-[#e5bf78] text-[#312415] hover:brightness-105'
-                  }`}
-                >
-                  Proceed to report
-                </button>
-              </div>
+              {str(live.helperCopy) && <p className="mt-2 text-[11px] text-[#3a342b]">{live.helperCopy}</p>}
             </div>
           </div>
         </div>
-      )}
-      <div className="fixed top-2 left-0 right-0 z-40 px-3 md:top-4">
-        <div
-          className={`relative mx-auto w-full rounded-[1.8rem] border shadow-[0_18px_45px_rgba(0,0,0,0.15)] backdrop-blur-xl lg:w-[min(1120px,94vw)] ${
-            isDarkMode
-              ? 'border-navy-200/70 bg-white/88 text-navy-900'
-              : 'border-navy-700/70 bg-[#071a2e]/82 text-white'
-          }`}
-          style={{
-            maskImage: 'linear-gradient(to bottom, black 0%, black 90%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 90%, transparent 100%)',
-          }}
-        >
-          <div className="pointer-events-none absolute inset-0 opacity-[0.16]" style={isDarkMode ? gridBgStyleLight : gridBgStyle} />
-          <div className="relative z-10 mx-auto flex w-full flex-col gap-3 px-4 py-3 md:px-6">
-            <button
-              type="button"
-              onClick={() => setShowHeaderStats((prev) => !prev)}
-              className="w-full rounded-2xl p-1 text-left transition hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-              aria-expanded={showHeaderStats}
-              aria-label="Toggle audit summary stats"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <img
-                    src={data.business.logoUrl}
-                    alt={`${data.business.name} logo`}
-                    className={`h-11 w-11 shrink-0 rounded-xl object-cover ring-2 shadow-md ${
-                      isDarkMode ? 'ring-navy-200' : 'ring-white/30'
-                    }`}
-                  />
-                  <div className="min-w-0">
-                    <p
-                      className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${isDarkMode ? 'text-navy-500' : 'text-slate-300'}`}
-                    >
-                      Audit prepared for
-                    </p>
-                    <p className={`truncate text-base font-semibold tracking-tight md:text-lg ${isDarkMode ? 'text-navy-900' : 'text-white'}`}>
-                      {data.business.name}
-                    </p>
-                    <p className={`truncate text-xs ${isDarkMode ? 'text-navy-600' : 'text-slate-300'}`}>{data.business.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-start gap-2 text-left sm:items-end sm:text-right">
-                    <p className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${isDarkMode ? 'text-navy-500' : 'text-slate-400'}`}>Intelligence by</p>
-                    <img
-                      src={isDarkMode ? fcBlack : fcWhite}
-                      alt="Fourcee"
-                      className="h-8 w-auto object-contain opacity-95 sm:h-9 md:h-10"
-                    />
-                  </div>
-                  <span
-                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${
-                      isDarkMode ? 'border-navy-300 text-navy-700' : 'border-white/30 text-white'
-                    }`}
-                    aria-hidden
-                  >
-                    <svg className={`h-4 w-4 transition-transform ${showHeaderStats ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor">
-                      <path d="M5 7.5L10 12.5L15 7.5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                </div>
-              </div>
-            </button>
-            {showHeaderStats && (
-              <div className="flex flex-wrap items-center gap-2">
-                <HeaderMetaItem
-                  tone="gold"
-                  surface={headerSurface}
-                  label={`${data.reviews.starsDisplay} ${data.reviews.rating.toFixed(1)} • ${data.reviews.count.toLocaleString()} Google Reviews`}
-                />
-                <HeaderMetaItem
-                  tone="silver"
-                  surface={headerSurface}
-                  label={`Answer Rate ${formatRange(data.callModel.answerRateMin, data.callModel.answerRateMax)}%`}
-                />
-                <HeaderMetaItem
-                  tone="gold"
-                  surface={headerSurface}
-                  label={`Missed Calls ${formatRange(data.callModel.missedCallsPerWeekMin, data.callModel.missedCallsPerWeekMax)}/week`}
-                />
+      </section>
+
+      {/* Ring studio (dark textured band) */}
+      <section id="ring-studio" className="fourcee-ribbed-wash scroll-mt-14 px-0 pt-10 pb-16 sm:px-6 md:pt-14 md:pb-24">
+        <div className="mx-auto mb-5 w-full max-w-6xl px-5 sm:px-1">
+          <Kicker light>Try it yourself</Kicker>
+          <h2 className="fx-display mt-2 text-[1.55rem] leading-[1.02] text-[#f4efe4] sm:text-2xl md:text-3xl">Ring Builder</h2>
+          <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-[#ddd4c6] sm:text-sm">
+            The 3D ring builder we set up on jewelers&apos; websites. Pick a style, stone and metal, then send the design to the store.
+          </p>
+        </div>
+        <div className="mx-auto w-full max-w-6xl overflow-hidden sm:rounded-[1.5rem]">
+          <Suspense fallback={<div className="h-[520px]" aria-hidden />}>
+            <RingStudio businessName={name} phone={biz.primaryPhone ?? undefined} website={biz.website ?? undefined} />
+          </Suspense>
+        </div>
+      </section>
+
+      <main className="fourcee-surface-bg">
+        {/* Key findings (benchmark estimates from content.json) */}
+        {(callStats.length > 0 || hasLoss) && (
+          <section className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 md:py-20" data-testid="audit-findings">
+            <Kicker>Key findings</Kicker>
+            <h2 className="fx-display mt-2 text-[1.35rem] leading-[1.08] sm:text-3xl">Where calls are going unanswered</h2>
+            {callStats.length > 0 && (
+              <div className="mt-8 grid gap-6 sm:grid-cols-3">
+                {callStats.map((s) => <Stat key={s.label} label={s.label} value={s.value} />)}
               </div>
             )}
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-7xl px-4 pt-52 sm:pt-48 md:px-8 md:pt-44 lg:pt-40">
-        {/* Hero: Fourcee mark + copy + MiniPhone + 3D ring */}
-        <section
-          className={`relative overflow-hidden rounded-[2rem] border p-6 md:p-10 ${shellClass}`}
-          style={{
-            backgroundImage: isDarkMode
-              ? "url('/assets/dark_hero.png')"
-              : "url('/assets/light_hero.png')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-            backgroundRepeat: 'no-repeat',
-            maskImage: 'linear-gradient(to bottom, black 0%, black 86%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 86%, transparent 100%)',
-          }}
-        >
-          {isDarkMode && (
-            <div
-              className="pointer-events-none absolute inset-0 opacity-35 mix-blend-soft-light"
-              style={{
-                backgroundImage:
-                  'radial-gradient(rgba(255,255,255,0.18) 0.6px, transparent 0.6px), radial-gradient(rgba(255,255,255,0.1) 0.6px, transparent 0.6px)',
-                backgroundSize: '3px 3px, 5px 5px',
-                backgroundPosition: '0 0, 1px 2px',
-              }}
-            />
-          )}
-          <div className="mb-6 flex justify-center md:mb-8">
-            <img
-              src={isDarkMode ? fcWhite : fcBlack}
-              alt="Fourcee"
-              className="h-10 w-auto object-contain opacity-95 sm:h-12 md:h-14"
-            />
-          </div>
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
-              backgroundSize: '32px 32px',
-            }}
-          />
-          <div className="relative z-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-            <div>
-              <p className={`text-[10px] uppercase tracking-[0.3em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>Prepared exclusively for:</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <img
-                  src={data.business.logoUrl}
-                  alt=""
-                  className="hidden h-12 w-12 rounded-xl object-cover ring-1 ring-white/15 sm:block"
-                  aria-hidden
-                />
+            {hasLoss && (
+              <div className="mt-12 grid items-center gap-10 lg:grid-cols-[1fr_minmax(0,380px)]">
                 <div>
-                  <h1 className={`text-3xl font-semibold leading-tight md:text-5xl ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-                    Phone Performance Audit Report
-                  </h1>
-                  <p className={`mt-2 text-lg ${isDarkMode ? 'text-slate-200' : 'text-navy-700'}`}>
-                    {data.business.name} - {data.business.location}
+                  <Kicker>Revenue impact</Kicker>
+                  <p className="fx-display mt-3 text-[1.25rem] leading-[1.12] sm:text-[2rem]">
+                    {money(rm.monthlyLossMin!)} – {money(rm.monthlyLossMax!)}
+                    <span className="mt-2 block text-[11px] tracking-[0.2em] text-[#6b5f4c]">Estimated monthly lost revenue</span>
                   </p>
+                  {num(rm.monthlyLossMidpoint) && <p className="mt-3 text-sm text-[#3a342b]">About {money(rm.monthlyLossMidpoint)} a month at mid-range assumptions.</p>}
+                  {disclaimer && <p className="mt-2 text-[12px] text-[#6b5f4c]">{disclaimer}</p>}
+                </div>
+                <div className="mx-auto w-full max-w-sm">
+                  <IncomingCallPhone isDarkMode={false} className="w-full" onAction={() => { scrollToId('audit-booking-cta'); onBookCall(); }} />
                 </div>
               </div>
+            )}
+            <Trust />
+          </section>
+        )}
 
-              <p className={`mt-4 max-w-2xl text-sm leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>
-                Fourcee is the voice AI built for high-end jewelers: it answers, qualifies, and books serious callers
-                while syncing every call to your CRM. This page shows your current phone leakage and lets you test how
-                Fourcee responds before you go live.
-              </p>
-
-              <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                <HeroMetricPill label="Inbound Calls / Week" value={formatRange(data.callModel.inboundCallsPerWeekMin, data.callModel.inboundCallsPerWeekMax)} isDarkMode={isDarkMode} />
-                <HeroMetricPill label="Typical Answer Rate" value={`${formatRange(data.callModel.answerRateMin, data.callModel.answerRateMax)}%`} isDarkMode={isDarkMode} />
-                <HeroMetricPill label="Likely Missed / Week" value={`${formatRange(data.callModel.missedCallsPerWeekMin, data.callModel.missedCallsPerWeekMax)} calls`} isDarkMode={isDarkMode} />
+        {/* Charts */}
+        {(hasVolumeChart || split.length > 0 || hasLine) && (
+          <section id="audit-full-report" className="mx-auto w-full max-w-6xl scroll-mt-16 space-y-10 border-t border-[rgba(12,11,9,0.12)] px-5 py-14 sm:px-8 md:py-20">
+            <div>
+              <Kicker>Full report</Kicker>
+              <h2 className="fx-display mt-2 text-[1.35rem] leading-[1.08] sm:text-3xl">Call volume and revenue leak</h2>
+            </div>
+            {hasVolumeChart && <CallVolumeBarChart callModel={cm as AuditData['callModel']} isDarkMode={false} />}
+            {(split.length > 0 || hasLine) && (
+              <div className="grid gap-10 lg:grid-cols-2">
+                {split.length > 0 && <MissedCallDonutChart missedCallTypeSplit={split} isDarkMode={false} />}
+                {hasLine && <RevenueLeakLineChart lineSeries={series} currencySymbol={sym} cumulativeLeak={rm.sixMonthCumulativeLeak!} isDarkMode={false} />}
               </div>
+            )}
+            <Trust />
+          </section>
+        )}
+        {!(hasVolumeChart || split.length > 0 || hasLine) && <span id="audit-full-report" />}
 
-              <div className="mt-7">
-                <button
-                  type="button"
-                  onClick={() => scrollToId('audit-full-report')}
-                  className={`rounded-full border px-6 py-3 text-xs font-bold uppercase tracking-[0.2em] shadow-lg transition ${
-                    isDarkMode
-                      ? 'border-white/20 bg-gradient-to-r from-slate-800 to-zinc-900 text-slate-200 hover:border-amber-500/30 hover:from-zinc-800 hover:to-black'
-                      : 'border-navy-300 bg-gradient-to-r from-navy-100 to-white text-navy-900 hover:border-navy-500'
-                  }`}
-                >
-                  Go live in 2 hours
-                </button>
+        {/* Breakdown table */}
+        {rows.length > 0 && (
+          <section className="mx-auto w-full max-w-6xl border-t border-[rgba(12,11,9,0.12)] px-5 py-14 sm:px-8 md:py-20" data-testid="audit-breakdown">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <Kicker>Breakdown</Kicker>
+                <h2 className="fx-display mt-2 text-[1.35rem] leading-[1.08] sm:text-3xl">Missed calls by type</h2>
               </div>
+              {str(d.breakdown?.riskBadge) && <span className="fx-chip">{d.breakdown!.riskBadge}</span>}
             </div>
-
-            <div className="flex min-w-0 flex-col gap-8 lg:max-w-[min(100%,440px)] lg:justify-self-end">
-              <div className={`relative isolate flex min-h-[240px] w-full items-center justify-center overflow-hidden rounded-2xl border sm:min-h-[280px] ${isDarkMode ? 'border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent' : 'border-navy-200 bg-gradient-to-b from-white to-slate-100'}`}>
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_40%_35%,rgba(212,175,55,0.14),transparent_55%)]" />
-                <div className="pointer-events-none absolute bottom-6 left-1/2 h-14 w-44 -translate-x-1/2 rounded-[100%] bg-white/10 blur-2xl" />
-                <PendantFBX
-                  className="relative z-0 mx-auto h-[220px] w-full max-w-[min(100%,320px)] sm:h-[280px] sm:max-w-[360px]"
-                  isDarkMode={isDarkMode}
-                />
-              </div>
-              <div id="audit-live-test" className="scroll-mt-32 w-full max-w-md shrink-0 self-center">
-                <p
-                  className={`mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.28em] ${isDarkMode ? 'text-amber-200/85' : 'text-navy-700'}`}
-                >
-                  Try Fourcee on your phone
-                </p>
-                <MiniPhone isDarkMode={isDarkMode} className="w-full" businessName={data.business.name} leadId={data.lead_id} />
-                <p className={`mt-3 text-center text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>
-                  Uses your public profile &amp; site context. No charge. ~60–90s.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ROI calculator moved directly below hero */}
-        <section className="mt-8">
-          <p className={`mb-4 text-[10px] uppercase tracking-[0.28em] ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Model your own numbers</p>
-          <ValueCalculator isDarkMode={isDarkMode} businessName={data.business.name} />
-          <div className="mt-5 flex justify-center">
-            <button
-              type="button"
-              onClick={onGetLive}
-              className={`rounded-full px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.22em] shadow-lg transition ${
-                isDarkMode
-                  ? 'bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 text-black hover:brightness-110'
-                  : 'bg-navy-900 text-white hover:bg-navy-800'
-              }`}
-            >
-              Launch concierge now
-            </button>
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
-
-        {/* Executive Summary + demo gif */}
-        <section className={`mt-8 overflow-hidden rounded-[2rem] border p-6 md:p-8 ${shellClass}`}>
-          <p className={`text-[10px] uppercase tracking-[0.27em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>Executive Summary</p>
-          <p className={`mt-3 max-w-4xl text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>
-            This is a live audit + test environment: review where calls are being lost, then trigger a real demo flow
-            to see how Fourcee captures demand and routes buyers to your team.
-          </p>
-          <div className={`mt-6 flex min-h-[12rem] justify-center overflow-hidden rounded-2xl border shadow-2xl md:min-h-[14rem] ${isDarkMode ? 'border-white/10 bg-navy-950/50' : 'border-navy-200 bg-white/80'}`}>
-            <img
-              src={placeholderGif}
-              alt="Call intelligence preview"
-              className="max-h-56 w-auto max-w-full object-contain object-center md:max-h-64"
-            />
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
-
-        {/* Methodology */}
-        <section className={`mt-8 rounded-[2rem] border p-6 md:p-8 ${panelClass}`}>
-          <p className={`text-[10px] uppercase tracking-[0.27em] ${isDarkMode ? 'text-white/60' : 'text-navy-500'}`}>Research Methodology</p>
-          <p className={`mt-3 max-w-4xl text-sm leading-relaxed ${isDarkMode ? 'text-white/85' : 'text-navy-700'}`}>
-            This report is based on your Google Business Profile performance ({data.reviews.count} reviews), website traffic patterns
-            for {data.business.industry} businesses, local search behavior in your area, and industry benchmarks.
-          </p>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
-
-        {/* Key findings + revenue impact + vibrating phone */}
-        <section className="mt-8">
-          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Key Findings</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <KpiCard title="Estimated Inbound Calls" value={`${formatRange(data.callModel.inboundCallsPerWeekMin, data.callModel.inboundCallsPerWeekMax)} per week`} isDarkMode={isDarkMode} />
-            <KpiCard title="Typical Answer Rate" value={`${formatRange(data.callModel.answerRateMin, data.callModel.answerRateMax)}%`} isDarkMode={isDarkMode} />
-            <KpiCard title="Likely Missed Calls" value={`${formatRange(data.callModel.missedCallsPerWeekMin, data.callModel.missedCallsPerWeekMax)} per week`} isDarkMode={isDarkMode} />
-          </div>
-          <div className={`mt-8 flex flex-col gap-8 rounded-[2rem] border p-6 lg:flex-row lg:items-center lg:justify-between lg:gap-10 lg:p-10 ${shellClass}`}>
-            <div className="text-center lg:max-w-xl lg:text-left">
-              <p className={`text-[10px] uppercase tracking-[0.28em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>Revenue Impact</p>
-              <p className={`mt-3 text-2xl font-semibold leading-tight lg:text-4xl ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-                Estimated Monthly Lost Revenue: {formatCurrency(data.revenueModel.monthlyLossMin)} - {formatCurrency(data.revenueModel.monthlyLossMax)}
-              </p>
-              <p className={`mt-2 text-sm ${isDarkMode ? 'text-slate-500' : 'text-navy-600'}`}>~{formatCurrency(data.revenueModel.monthlyLossMidpoint)} / month at typical mid-range assumptions</p>
-            </div>
-            <div className="mx-auto w-full max-w-sm shrink-0 lg:mx-0 lg:max-w-md">
-              <IncomingCallPhone isDarkMode={isDarkMode} className="w-full" onAction={triggerBooking} />
-            </div>
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
-
-        {/* Charts: bar → donut → line */}
-        <div id="audit-full-report" className="mt-10 scroll-mt-28 space-y-8">
-          <CallVolumeBarChart callModel={data.callModel} isDarkMode={isDarkMode} />
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-          <div className="grid gap-8 lg:grid-cols-2">
-            <MissedCallDonutChart missedCallTypeSplit={data.callModel.missedCallTypeSplit} isDarkMode={isDarkMode} />
-            <RevenueLeakLineChart lineSeries={data.revenueModel.lineSeries} currencySymbol={data.auditMeta.currencySymbol} cumulativeLeak={data.revenueModel.sixMonthCumulativeLeak} isDarkMode={isDarkMode} />
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </div>
-
-        {/* Table */}
-        <section className="mt-10">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Missed Calls Breakdown</h2>
-            <div
-              className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                isDarkMode
-                  ? 'border-red-400/35 bg-red-950/30 text-red-100'
-                  : 'border-red-300 bg-red-100 text-red-900'
-              }`}
-            >
-              {data.breakdown.riskBadge}
-            </div>
-          </div>
-          <div className={`mt-4 overflow-hidden rounded-3xl border ${isDarkMode ? 'border-white/10' : 'border-navy-200'}`}>
-            <table className="w-full">
-              <thead className={`text-left ${isDarkMode ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
-                <tr className={`text-[10px] uppercase tracking-[0.24em] ${isDarkMode ? 'text-white/60' : 'text-navy-500'}`}>
-                  <th className="px-5 py-4">Call Type</th>
-                  <th className="px-5 py-4">Est. Missed / Week</th>
-                  <th className="px-5 py-4">Monthly Revenue Impact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.breakdown.rows.map((row) => (
-                  <tr
-                    key={row.callType}
-                    className={`border-t transition hover:translate-x-[2px] ${isDarkMode ? 'border-white/10 hover:bg-white/[0.06]' : 'border-navy-100 hover:bg-slate-50'}`}
-                  >
-                    <td className={`px-5 py-4 text-sm ${isDarkMode ? 'text-white/90' : 'text-navy-800'}`}>{row.callType}</td>
-                    <td className={`px-5 py-4 text-sm ${isDarkMode ? 'text-white/80' : 'text-navy-700'}`}>{formatRange(row.weeklyMissedMin, row.weeklyMissedMax)}</td>
-                    <td className="px-5 py-4 text-sm font-medium">
-                      <span className={isDarkMode ? 'text-amber-100' : 'font-semibold text-emerald-900'}>
-                        {formatCurrency(row.monthlyImpactMin)} - {formatCurrency(row.monthlyImpactMax)}
-                      </span>
-                    </td>
+            <div className="mt-8 overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-[0.22em] text-[#6b5f4c]">
+                    <th className="py-3 pr-4 font-medium">Call type</th>
+                    <th className="py-3 pr-4 font-medium">Est. missed / week</th>
+                    <th className="py-3 font-medium">Monthly impact</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.callType} className="border-t border-[rgba(12,11,9,0.12)] text-sm">
+                      <td className="py-4 pr-4">{r.callType}</td>
+                      <td className="py-4 pr-4 tabular-nums">{range(r.weeklyMissedMin, r.weeklyMissedMax) || '—'}</td>
+                      <td className="py-4 font-medium tabular-nums">{num(r.monthlyImpactMin) && num(r.monthlyImpactMax) ? `${money(r.monthlyImpactMin)} – ${money(r.monthlyImpactMax)}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {cards.length > 0 && (
+              <div className="mt-10 grid gap-6 md:grid-cols-2">
+                {cards.map((c) => (
+                  <div key={c!.title} className="border-t border-[rgba(12,11,9,0.16)] pt-4">
+                    <p className="text-base font-semibold">{c!.title}</p>
+                    {str(c!.subtitle) && <p className="mt-1 text-sm text-[#3a342b]">{c!.subtitle}</p>}
+                    {str(c!.valueNote) && <p className="mt-2 text-sm font-medium">{c!.valueNote}</p>}
+                    {str(c!.impactTier) && <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[#6b5f4c]">Monthly impact · {c!.impactTier}</p>}
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={`mt-6 rounded-3xl border p-4 md:p-6 ${shellClass}`}>
-            <div className="grid gap-4 md:gap-5">
-              {data.breakdown.opportunityCards.map((card) => (
-                <div key={card.title} className="grid w-full items-stretch gap-3 md:grid-cols-[minmax(0,1fr)_168px]">
-                  <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/15 bg-white/[0.04] text-slate-100' : 'border-navy-200 bg-white/85 text-navy-900'}`}>
-                    <p className="text-base font-semibold tracking-tight">{card.title}</p>
-                    <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>{card.subtitle}</p>
-                    <p className={`mt-2 text-sm font-medium ${isDarkMode ? 'text-amber-200' : 'text-navy-800'}`}>{card.valueNote}</p>
-                  </div>
-                  <div className={`rounded-2xl border p-4 text-center ${isDarkMode ? 'border-navy-700 bg-navy-900/70 text-slate-100' : 'border-navy-200 bg-navy-900 text-white'}`}>
-                    <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-navy-200' : 'text-white/80'}`}>Monthly impact</p>
-                    <p className="mt-2 text-2xl font-bold">{card.impactTier}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className={`mt-5 text-center text-sm ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>
-              Every missed call is a missed opportunity - the cost adds up across all categories.
-            </p>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-white/[0.02]' : 'border-navy-200 bg-white/80'}`}>
-              <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>Most exposed segment</p>
-              <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{data.breakdown.rows[0]?.callType || 'High-value inquiries'}</p>
-            </div>
-            <div className={`rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-white/[0.02]' : 'border-navy-200 bg-white/80'}`}>
-              <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-500' : 'text-navy-500'}`}>Immediate monthly leak</p>
-              <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-amber-100' : 'text-emerald-900'}`}>
-                {formatCurrency(data.revenueModel.monthlyLossMin)} - {formatCurrency(data.revenueModel.monthlyLossMax)}
-              </p>
-            </div>
-            <div
-              className={`rounded-2xl border p-4 ${isDarkMode ? 'border-amber-400/25 bg-amber-950/20' : 'border-amber-200/80 bg-amber-50'}`}
-            >
-              <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-amber-200/80' : 'text-amber-900'}`}>Decision pressure</p>
-              <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Each missed call compounds every week.</p>
-            </div>
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
+              </div>
+            )}
+            <Trust />
+          </section>
+        )}
 
-        <section className={`mt-10 rounded-[2rem] border p-6 md:p-8 ${panelClass}`}>
-          <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>What This Means For Your Business</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-            <div className={`rounded-2xl border p-5 ${isDarkMode ? 'border-white/10 bg-navy-950/40' : 'border-navy-200 bg-white/80'}`}>
-              <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-white/85' : 'text-navy-700'}`}>
-                You are currently losing between{' '}
-                <span className={`font-semibold ${isDarkMode ? 'text-amber-100' : 'text-emerald-900'}`}>
-                  {formatCurrency(data.revenueModel.monthlyLossMin)} and {formatCurrency(data.revenueModel.monthlyLossMax)}
-                </span>{' '}
-                every month simply because calls are going unanswered. Most of these callers do not call back.
-              </p>
-            </div>
-            <div
-              className={`rounded-2xl border p-5 ${
-                isDarkMode ? 'border-red-400/30 bg-red-950/25' : 'border-red-200 bg-red-50'
-              }`}
-            >
-              <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-red-100' : 'text-red-900'}`}>
-                Behavioral reality
-              </p>
-              <p className={`mt-2 text-sm font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-                Buyers call the next jeweller within minutes.
-              </p>
-            </div>
-          </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
+        {/* Reviews + traffic (only real scraped values) */}
+        {(hasReviews || traffic.length > 0) && (
+          <section className="mx-auto grid w-full max-w-6xl gap-12 border-t border-[rgba(12,11,9,0.12)] px-5 py-14 sm:px-8 md:py-20 lg:grid-cols-2" data-testid="audit-proof">
+            {hasReviews && (
+              <div>
+                <Kicker>Google Business Profile</Kicker>
+                <p className="fx-display mt-3 text-[2rem] leading-none sm:text-[2.6rem]">{rev.rating!.toFixed(1)} <span className="text-[#6b5f4c]">★</span></p>
+                <p className="mt-2 text-sm text-[#3a342b]">{rev.count!.toLocaleString(locale)} public reviews{name ? ` for ${name}` : ''}</p>
+                {quotes.map((q) => (
+                  <blockquote key={q} className="mt-5 border-l border-[#c8b58f] pl-4 text-sm italic leading-relaxed text-[#3a342b]">&ldquo;{q}&rdquo;</blockquote>
+                ))}
+                {themes.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{themes.map((t) => <span key={t} className="fx-chip">{t}</span>)}</div>}
+              </div>
+            )}
+            {traffic.length > 0 && <TrafficPieChart trafficSources={traffic} isDarkMode={false} />}
+          </section>
+        )}
 
-        {/* Proof: GBP + traffic + before/after */}
-        <section className="mt-10 grid gap-8 lg:grid-cols-2">
-          <GbpSnapshotMockup reviews={data.reviews} isDarkMode={isDarkMode} />
-          <TrafficPieChart trafficSources={data.traffic.sources} isDarkMode={isDarkMode} />
-        </section>
-        <div className="mt-8">
-          <BeforeAfterCards comparison={data.comparison} currencySymbol={data.auditMeta.currencySymbol} isDarkMode={isDarkMode} />
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
+        {/* Before / after + 90-day projection */}
+        {(hasCmp || projections.length > 0) && (
+          <section className="mx-auto w-full max-w-6xl border-t border-[rgba(12,11,9,0.12)] px-5 py-14 sm:px-8 md:py-20" data-testid="audit-projection">
+            <Kicker>With Fourcee</Kicker>
+            <h2 className="fx-display mt-2 text-[1.35rem] leading-[1.08] sm:text-3xl">Projected within 90 days</h2>
+            {hasCmp && <div className="mt-8"><BeforeAfterCards comparison={cmp as AuditData['comparison']} currencySymbol={sym} isDarkMode={false} /></div>}
+            {projections.length > 0 && (
+              <div className="mt-8 grid gap-6 sm:grid-cols-3">{projections.map((p) => <Stat key={p.label} label={p.label} value={p.value} />)}</div>
+            )}
+            <Trust />
+          </section>
+        )}
+
+        {/* Recovery plan (only the content.json body / capabilities / media) */}
+        {hasPlan && (
+          <section className="mx-auto grid w-full max-w-6xl gap-10 border-t border-[rgba(12,11,9,0.12)] px-5 py-14 sm:px-8 md:py-20 lg:grid-cols-2" data-testid="audit-plan">
+            <div>
+              <Kicker>Recovery plan</Kicker>
+              <h2 className="fx-display mt-2 text-[1.35rem] leading-[1.08] sm:text-3xl">{str(plan.headline) ? plan.headline : 'Recovery plan'}</h2>
+              {str(plan.body) && <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#3a342b]">{plan.body}</p>}
+              {caps.length > 0 && (
+                <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {caps.map((c) => <li key={c} className="border-t border-[rgba(12,11,9,0.16)] pt-3 text-sm">{c}</li>)}
+                </ul>
+              )}
+            </div>
+            {media && <img src={media} alt="" className="h-full max-h-[380px] w-full rounded-2xl object-cover" loading="lazy" />}
+          </section>
+        )}
+      </main>
+
+      {/* ROI calculator (user inputs only) */}
+      <section id="audit-roi" className="fourcee-ribbed-wash scroll-mt-14 px-5 py-14 sm:px-8 md:py-20">
+        <div className="mx-auto w-full max-w-5xl">
+          <Kicker light>Your numbers</Kicker>
+          <h2 className="fx-display mt-2 mb-8 text-[1.35rem] leading-[1.08] text-[#f4efe4] sm:text-3xl">Calculate the ROI</h2>
+          <ValueCalculator isDarkMode businessName={data.business?.name} />
         </div>
+      </section>
 
-        <section className={`mt-10 rounded-[2rem] border p-6 md:p-8 ${panelClass}`}>
-          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Projected Results Within 90 Days</h2>
-          <div className="mt-5 space-y-5">
-            <ProgressMetric label="Answer rate" value={data.projection90d.answerRateProjected} widthClass={data.projection90d.barWidths.answerRate} isDarkMode={isDarkMode} />
-            <ProgressMetric label="Monthly revenue recovered" value={data.projection90d.monthlyRecoveredProjected} widthClass={data.projection90d.barWidths.monthlyRecovered} isDarkMode={isDarkMode} />
-            <ProgressMetric label="Typical payback period" value={data.projection90d.paybackPeriodProjected} widthClass={data.projection90d.barWidths.paybackPeriod} isDarkMode={isDarkMode} />
+      {/* Closing CTA */}
+      <section id="audit-booking-cta" className="fourcee-hero-beige relative scroll-mt-14 overflow-hidden px-5 py-16 text-center sm:px-8 md:py-24">
+        <div className="fx-grid" aria-hidden />
+        <div className="relative mx-auto max-w-2xl">
+          <Kicker>Next step</Kicker>
+          <h2 className="fx-display mt-3 text-[1.4rem] leading-[1.08] sm:text-3xl">{name ? `Answer every call at ${name}` : 'Answer every call'}</h2>
+          <div className="hero-ctas mt-8 flex flex-wrap items-center justify-center gap-3">
+            <button type="button" onClick={onGetLive} className="hc-btn hc-primary" data-testid="cta-get-live"><span>Get live</span><Arrow /></button>
+            <button type="button" onClick={onBookCall} className="hc-btn hc-secondary" data-testid="cta-book-call">Book a 15-minute call</button>
           </div>
-          <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-        </section>
-
-        {/* Recovery plan + Nivoda gif */}
-        <section className={`mt-10 overflow-hidden rounded-[2rem] border md:grid md:grid-cols-[1fr_minmax(0,380px)] md:gap-0 ${panelClass}`}>
-          <div className="p-6 md:p-8">
-            <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{data.recoveryPlan.headline}</h2>
-            <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${isDarkMode ? 'text-white/75' : 'text-navy-700'}`}>
-              Recovering this pipeline starts with immediate coverage and fast lead handling. Based on your current model,
-              this is a practical rollout designed to recover {formatCurrency(data.revenueModel.monthlyLossMin)} to {formatCurrency(data.revenueModel.monthlyLossMax)}
-              in monthly leakage while protecting showroom experience.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className={`rounded-xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-navy-200 bg-white/80'}`}>
-                <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-amber-300' : 'text-navy-600'}`}>Week 1</p>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-200' : 'text-navy-800'}`}>Deploy 24/7 call answering and instant handoff rules.</p>
-              </div>
-              <div className={`rounded-xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-navy-200 bg-white/80'}`}>
-                <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-amber-300' : 'text-navy-600'}`}>Week 2</p>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-200' : 'text-navy-800'}`}>Enable qualification + appointment booking workflows.</p>
-              </div>
-              <div className={`rounded-xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-navy-200 bg-white/80'}`}>
-                <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-amber-300' : 'text-navy-600'}`}>Week 3</p>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-200' : 'text-navy-800'}`}>Sync transcripts and lead outcomes into your CRM.</p>
-              </div>
-              <div className={`rounded-xl border p-3 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-navy-200 bg-white/80'}`}>
-                <p className={`text-[10px] uppercase tracking-[0.2em] ${isDarkMode ? 'text-amber-300' : 'text-navy-600'}`}>Week 4+</p>
-                <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-200' : 'text-navy-800'}`}>Optimize conversion scripts using real call analytics.</p>
-              </div>
-            </div>
-            <ul className={`mt-4 space-y-2 text-sm ${isDarkMode ? 'text-slate-300' : 'text-navy-700'}`}>
-              {data.recoveryPlan.capabilities.map((capability) => (
-                <li key={capability} className="flex items-center gap-2">
-                  <span className={isDarkMode ? 'text-amber-300' : 'text-emerald-700'}>•</span>
-                  <span>{capability}</span>
-                </li>
-              ))}
-            </ul>
-            <SectionTrustFooter dataSourceLine={data.compliance.dataSourceLine} isDarkMode={isDarkMode} />
-          </div>
-          <div className={`border-t md:border-l md:border-t-0 ${isDarkMode ? 'border-white/10 bg-navy-950/50' : 'border-navy-200 bg-slate-100/60'}`}>
-            <img src={data.recoveryPlan.supportingMediaUrl} alt="Live inventory intelligence" className="h-full min-h-[200px] w-full object-cover" />
-          </div>
-        </section>
-
-        <section className={`relative mt-10 overflow-hidden rounded-[2rem] border px-6 py-10 text-center md:px-12 md:py-12 ${shellClass}`}>
-          <div className="pointer-events-none absolute inset-0 opacity-20" style={isDarkMode ? gridBgStyle : gridBgStyleLight} />
-          <p className={`relative mx-auto max-w-3xl text-lg font-semibold leading-snug md:text-2xl md:leading-relaxed ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-            A serious buyer reaching out to their preferred jeweller should never be lost because no one could answer
-            the phone.{' '}
-            <span className={isDarkMode ? 'text-amber-200' : 'font-semibold text-emerald-800'}>That changes with Fourcee.</span>
-          </p>
-          <p className={`relative mx-auto mt-4 max-w-2xl text-xs uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>
-            Every qualified caller gets answered, routed, and captured.
-          </p>
-        </section>
-
-        <section
-          id="audit-booking-cta"
-          className={`mt-10 rounded-[2rem] border p-8 text-center ${
-            isDarkMode
-              ? 'border-amber-500/20 bg-gradient-to-br from-navy-900 via-navy-950 to-navy-900 shadow-[inset_0_1px_0_rgba(212,175,55,0.12)]'
-              : 'border-navy-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-[0_14px_35px_rgba(15,23,42,0.08)]'
-          }`}
-        >
-          <p className={`text-[10px] uppercase tracking-[0.3em] ${isDarkMode ? 'text-amber-200/80' : 'text-navy-600'}`}>Choose Your Next Step</p>
-          <h2 className={`mt-3 text-2xl font-semibold md:text-4xl ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
-            You are currently losing between {formatCurrency(data.revenueModel.monthlyLossMin)} and {formatCurrency(data.revenueModel.monthlyLossMax)} every month simply because calls are going unanswered.
-          </h2>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={onGetLive}
-              className={`rounded-full px-6 py-3 text-xs font-bold uppercase tracking-[0.2em] shadow-lg transition ${
-                isDarkMode
-                  ? 'bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 text-black shadow-amber-900/30 hover:brightness-110'
-                  : 'bg-navy-900 text-white shadow-navy-900/20 hover:bg-navy-800'
-              }`}
-            >
-              Get Live in Under 2 Hours
-            </button>
-            <button
-              type="button"
-              onClick={onBookCall}
-              className={`rounded-full border px-6 py-3 text-xs font-bold uppercase tracking-[0.2em] transition ${
-                isDarkMode
-                  ? 'border-white/20 bg-gradient-to-r from-white/10 to-white/5 text-slate-200 hover:border-amber-500/30 hover:from-white/15'
-                  : 'border-navy-300 bg-white text-navy-900 shadow-sm hover:border-navy-500 hover:bg-slate-50'
-              }`}
-            >
-              Book a 15-Minute Strategy Call
-            </button>
-          </div>
-        </section>
-        <div
-          className="pointer-events-none mt-8 h-24"
-          style={{
-            background: isDarkMode
-              ? 'linear-gradient(to bottom, rgba(5,27,45,0), rgba(5,27,45,0.65) 55%, rgba(5,27,45,1) 100%)'
-              : 'linear-gradient(to bottom, rgba(242,232,210,0), rgba(255,255,255,0.78) 60%, rgba(255,255,255,1) 100%)',
-          }}
-        />
-      </div>
+          {str(d.compliance?.disclaimerLong) && <p className="mx-auto mt-8 max-w-xl text-[11px] leading-relaxed text-[#6b5f4c]">{d.compliance!.disclaimerLong}</p>}
+        </div>
+      </section>
+      <div className="h-24" aria-hidden />
     </div>
   );
 };

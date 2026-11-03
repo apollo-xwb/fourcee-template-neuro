@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "SphereNextThin";
+  src: url("/assets/SphereNextThin-WyR54.ttf") format("truetype");
+  font-weight: 100 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NextSphereBlack";
+  src: url("/assets/NextSphereBlack-eZLJg.ttf") format("truetype");
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --color-destructive-foreground: oklch(1 0 0);
+  --color-color-destructive-foreground: var(----color-destructive-foreground);
+}
+
+:root {
+  --destructive-foreground: oklch(1 0 0);
+}
+
+.dark {
+  --destructive-foreground: oklch(1 0 0);
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Global typography overhaul:
+   - Hero heading voice: Montserrat
+   - Hero supporting text voice: Inter */
+html,
+body,
+#root {
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.serif,
+.font-serif,
+.audit-heading-font,
+[class*="display"],
+[class*="heading"],
+[class~="serif"] {
+  font-family: "SphereNextThin", "Michroma", "Inter", ui-sans-serif, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* Important supporting copy defaults to the hero subtext voice. */
+p,
+small,
+label,
+input,
+textarea,
+select,
+button,
+li,
+a {
+  font-family: var(--font-sans);
+}

@@ -46,7 +46,7 @@ export function CallVolumeBarChart({ callModel, isDarkMode = true }: { callModel
     { label: 'Missed calls', value: avgMissed, grad: 'url(#cv-rose)', text: `${callModel.missedCallsPerWeekMin}–${callModel.missedCallsPerWeekMax} / wk` },
   ];
   return (
-    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
+    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0 md:px-0'}`}>
       <h3 className={`audit-heading-font text-lg ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>
         Call Volume &amp; Answer Rate
       </h3>
@@ -59,7 +59,7 @@ export function CallVolumeBarChart({ callModel, isDarkMode = true }: { callModel
             const x = 40 + i * 100;
             const y = 200 - h;
             return (
-              <g key={b.label} filter="url(#cv-glow)">
+              <g key={b.label}>
                 <rect x={x} y={y} width="56" height={h} rx="6" fill={b.grad} stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" />
                 <rect x={x + 4} y={y + 4} width="48" height={Math.min(12, h * 0.15)} rx="2" fill="rgba(255,255,255,0.12)" />
               </g>
@@ -122,7 +122,7 @@ export function RevenueLeakLineChart({ lineSeries, currencySymbol, cumulativeLea
   const toY = (v: number) => h - pad - ((v - minY) / (maxY - minY)) * (h - pad * 2);
   const d = points.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(v)}`).join(' ');
   return (
-    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
+    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0 md:px-0'}`}>
       <h3 className={`audit-heading-font text-lg ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Your Hidden Revenue Leak</h3>
       <p className={`mt-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Cumulative estimated missed revenue (6 months)</p>
       <div className="mt-6 overflow-x-auto">
@@ -139,7 +139,6 @@ export function RevenueLeakLineChart({ lineSeries, currencySymbol, cumulativeLea
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            filter="url(#rv-glow)"
           />
           {points.map((v, i) => (
             <circle key={i} cx={toX(i)} cy={toY(v)} r="5" fill="url(#rv-node)" stroke="rgba(255,255,255,0.35)" strokeWidth="0.5" />
@@ -178,7 +177,7 @@ export function MissedCallDonutChart({ missedCallTypeSplit, isDarkMode = true }:
     return { d, gradId: seg.gradId, label: seg.label, pct: seg.pct };
   });
   return (
-    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
+    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0 md:px-0'}`}>
       <h3 className={`audit-heading-font text-lg ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Missed Calls by Type</h3>
       <p className={`mt-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Share of missed-call volume (estimated)</p>
       <div className="mt-6 flex flex-col items-center gap-6 md:flex-row md:items-start md:justify-center">
@@ -238,16 +237,16 @@ export function MissedCallDonutChart({ missedCallTypeSplit, isDarkMode = true }:
 export function BeforeAfterCards({ comparison, currencySymbol, isDarkMode = true }: { comparison: { currentAnsweredRate: number; currentMonthlyLoss: number; projectedAnsweredRate: number; projectedMonthlyLoss: number; comparisonFootnote: string }; currencySymbol: string; isDarkMode?: boolean }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className={`rounded-3xl border p-6 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-900/90 via-red-950/25 to-black shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]' : 'border-red-200 bg-gradient-to-br from-red-50 to-white shadow-[0_10px_30px_rgba(127,29,29,0.08)]'}`}>
+      <div className={`rounded-3xl border p-6 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-900/90 via-red-950/25 to-black shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0'}`}>
         <p className={`text-[10px] font-bold uppercase tracking-[0.25em] ${isDarkMode ? 'text-red-300/90' : 'text-red-800'}`}>Current situation</p>
         <p className={`mt-3 text-2xl font-semibold ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{comparison.currentAnsweredRate}% answered</p>
         <p className={`mt-2 text-lg font-medium ${isDarkMode ? 'text-rose-200/95' : 'text-red-800'}`}>{currencySymbol}{comparison.currentMonthlyLoss.toLocaleString()} lost / month</p>
         <p className={`mt-3 text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>{comparison.comparisonFootnote}</p>
       </div>
-      <div className={`rounded-3xl border p-6 ${isDarkMode ? 'border-amber-400/25 bg-gradient-to-br from-zinc-950 via-amber-950/30 to-black shadow-[inset_0_1px_0_rgba(212,175,55,0.18)]' : 'border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-slate-50 shadow-[0_10px_30px_rgba(5,46,22,0.08)]'}`}>
-        <p className={`text-[10px] font-bold uppercase tracking-[0.25em] ${isDarkMode ? 'text-amber-200/95' : 'text-emerald-900'}`}>With Fourcee AI</p>
+      <div className={`rounded-3xl border p-6 ${isDarkMode ? 'border-amber-400/25 bg-gradient-to-br from-zinc-950 via-amber-950/30 to-black shadow-[inset_0_1px_0_rgba(212,175,55,0.18)]' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0'}`}>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.25em] ${isDarkMode ? 'text-amber-200/95' : 'text-[#0c0b09]'}`}>With Fourcee AI</p>
         <p className={`mt-3 text-2xl font-semibold tracking-tight ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>{comparison.projectedAnsweredRate}% answered</p>
-        <p className={`mt-2 text-lg font-medium ${isDarkMode ? 'text-amber-200/95' : 'text-emerald-900'}`}>{currencySymbol}{comparison.projectedMonthlyLoss} lost to missed calls</p>
+        <p className={`mt-2 text-lg font-medium ${isDarkMode ? 'text-amber-200/95' : 'text-[#0c0b09]'}`}>{currencySymbol}{comparison.projectedMonthlyLoss} lost to missed calls</p>
         <p className={`mt-3 text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Projected after full deployment and team handoff</p>
       </div>
     </div>
@@ -256,7 +255,7 @@ export function BeforeAfterCards({ comparison, currencySymbol, isDarkMode = true
 
 export function GbpSnapshotMockup({ reviews, isDarkMode = true }: { reviews: { rating: number; count: number; starsDisplay: string; quote1: string; quote2: string }; isDarkMode?: boolean }) {
   return (
-    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 to-black' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
+    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 to-black' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0 md:px-0'}`}>
       <div className="flex items-center gap-2">
         <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
           <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.9-5.4 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.9 3.6 14.7 2.7 12 2.7A9.3 9.3 0 0 0 2.7 12c0 5.1 4.2 9.3 9.3 9.3 5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.1-1.9H12z" />
@@ -266,7 +265,7 @@ export function GbpSnapshotMockup({ reviews, isDarkMode = true }: { reviews: { r
         </svg>
         <h3 className={`audit-heading-font text-lg ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Google Business Profile Snapshot</h3>
       </div>
-      <div className={`mt-4 rounded-2xl border p-5 shadow-inner ${isDarkMode ? 'border-white/10 bg-black/50' : 'border-navy-200 bg-slate-50'}`}>
+      <div className={`mt-4 rounded-2xl border p-5 shadow-inner ${isDarkMode ? 'border-white/10 bg-black/50' : 'rounded-none border-0 bg-transparent px-0'}`}>
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={`text-lg ${isDarkMode ? 'text-amber-300 drop-shadow-[0_0_8px_rgba(253,224,71,0.55)]' : 'text-amber-800'}`}
@@ -325,7 +324,7 @@ export function TrafficPieChart({ trafficSources, isDarkMode = true }: { traffic
     return { d, fill: seg.fill, legendClass: seg.legendClass, stroke: seg.stroke, label: seg.label, pct: seg.pct };
   });
   return (
-    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'border-navy-200 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
+    <div className={`rounded-[2rem] border p-6 md:p-8 ${isDarkMode ? 'border-white/10 bg-gradient-to-br from-zinc-950 via-black to-zinc-900' : 'rounded-none border-0 border-t border-[#d8cdb8] bg-transparent px-0 md:px-0'}`}>
       <h3 className={`audit-heading-font text-lg ${isDarkMode ? 'text-slate-100' : 'text-navy-900'}`}>Where your calls are coming from</h3>
       <p className={`mt-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Traffic source mix (illustrative)</p>
       <div className="mt-6 flex flex-col items-center gap-4 md:flex-row md:justify-center">
@@ -334,7 +333,7 @@ export function TrafficPieChart({ trafficSources, isDarkMode = true }: { traffic
             <path key={i} d={p.d} fill={p.fill} stroke={p.stroke} strokeWidth="0.9" />
           ))}
         </svg>
-        <div className={`w-full max-w-[240px] rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'border-navy-200 bg-slate-50'}`}>
+        <div className={`w-full max-w-[240px] rounded-2xl border p-4 ${isDarkMode ? 'border-white/10 bg-white/[0.03]' : 'rounded-none border-0 bg-transparent px-0'}`}>
           <p className={`mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-navy-600'}`}>Legend</p>
           <ul className="space-y-2 text-sm">
           {slices.map((s) => (
